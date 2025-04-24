@@ -1,4 +1,4 @@
-# Auth Experiment Project
+# Auth Service for small business or organization where no of users are few but needs a secured authentication System without any external Database
 
 This project implements a user authentication and authorization system using Spring Boot, Spring Security, JWT (JSON Web Tokens), Refresh Tokens, and a persistent H2 database.
 
