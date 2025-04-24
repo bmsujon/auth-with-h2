@@ -4,6 +4,10 @@ import java.io.IOException;
 
 import auth_with_h2.auth_experiment.service.UserDetailsServiceImpl;
 import auth_with_h2.auth_experiment.utils.JwtUtils;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,25 +36,40 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        String jwt = null;
         try {
-            String jwt = parseJwt(request);
-            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+            jwt = parseJwt(request);
+            if (jwt != null) {
+                // Attempt to get username; this implicitly validates the token
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
+                // If successful (no exception thrown), load user details and set authentication
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
-                                null,
+                                null, // Credentials not needed as JWT is verified
                                 userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+        } catch (ExpiredJwtException e) {
+            logger.warn("JWT token is expired: {} for token: {}", e.getMessage(), jwt);
+            // Optionally: Set a request attribute or header to indicate expiry
+            // request.setAttribute("jwtExpired", true);
+            // response.setHeader("X-Token-Status", "Expired");
+        } catch (MalformedJwtException | UnsupportedJwtException | SignatureException | IllegalArgumentException e) {
+            // Catch specific JWT validation errors (other than expiry)
+            logger.error("Invalid JWT token: {} for token: {}", e.getMessage(), jwt);
+            // request.setAttribute("jwtInvalid", true);
+            // response.setHeader("X-Token-Status", "Invalid");
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            // Catch any other unexpected errors during authentication context setup
+            logger.error("Cannot set user authentication: {}", e.getMessage(), e);
         }
 
+        // Continue the filter chain regardless of whether authentication was set
         filterChain.doFilter(request, response);
     }
 

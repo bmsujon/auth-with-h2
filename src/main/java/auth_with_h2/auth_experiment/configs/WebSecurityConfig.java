@@ -49,6 +49,26 @@ public class WebSecurityConfig {
     };
 
     @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                // ... other configs like csrf, cors, sessionManagement ...
+                .exceptionHandling(exception -> exception
+                                .authenticationEntryPoint(unauthorizedHandler) // Your AuthEntryPointJwt bean
+                        // .accessDeniedHandler(...) // Optional: Define how 403 is handled
+                )
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/signin", "/api/auth/signup", "/api/auth/refreshtoken", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll() // Public endpoints
+                        // **** Crucial Line ****
+                        .requestMatchers("/api/auth/me", "/api/auth/validate", "/api/auth/signout", "/api/auth/change-password").authenticated() // Requires authentication
+                        // **** ---- ****
+                        .anyRequest().authenticated() // Default deny or specific rules
+                );
+
+        // http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
@@ -66,6 +86,9 @@ public class WebSecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // Removed the old 'securityFilterChain' bean as it was causing confusion
+    // with the two ordered beans below.
+
     // Security Filter Chain specifically for H2 Console
     @Bean
     @Order(1) // Process H2 console requests first
@@ -81,17 +104,22 @@ public class WebSecurityConfig {
     }
 
     // Default Security Filter Chain for everything else
-// Default Security Filter Chain for everything else
+    // Default Security Filter Chain for everything else
     @Bean
     @Order(2) // Process other requests after H2 console
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable()) // Disable CSRF for stateless JWT auth
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+        http.csrf(csrf -> csrf.disable())
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler)) // This handles failed authentication attempts
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Permit other public paths (excluding H2 console, handled above)
+                        // Permit public paths
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/signin",
+                                "/api/auth/signup",
+                                "/api/auth/refreshtoken",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                // Swagger UI paths
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
@@ -99,10 +127,17 @@ public class WebSecurityConfig {
                                 "/webjars/**",
                                 "/favicon.ico"
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Secure admin endpoints
-                        .anyRequest().authenticated() // Secure all other requests
+                        // --- Explicitly require authentication for /me ---
+                        .requestMatchers("/api/auth/me").authenticated()
+                        // --- Secure admin endpoints ---
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // --- Secure other potentially sensitive auth endpoints ---
+                        // validate, change-password, signout are already covered by @PreAuthorize,
+                        // but adding them here provides defense in depth and ensures 401 if filter fails.
+                        .requestMatchers("/api/auth/validate", "/api/auth/change-password", "/api/auth/signout").authenticated()
+                        // Secure all other requests by default
+                        .anyRequest().authenticated()
                 );
-        // Removed the .headers(headers -> headers) call, defaults will apply
 
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);

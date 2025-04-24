@@ -3,10 +3,8 @@ package auth_with_h2.auth_experiment;
 import auth_with_h2.auth_experiment.dto.JwtResponse;
 import auth_with_h2.auth_experiment.dto.LoginRequest;
 import auth_with_h2.auth_experiment.dto.SignupRequest;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import auth_with_h2.auth_experiment.repository.UserRepository;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -20,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT) // Load full context, use random port
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class) // Control test execution order if needed
+@TestInstance(TestInstance.Lifecycle.PER_CLASS) // Allow state sharing between tests
 class AuthIntegrationTest {
 
     @LocalServerPort
@@ -28,10 +27,26 @@ class AuthIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate; // For making HTTP requests
 
+    @Autowired
+    private UserRepository userRepository; // Inject repository for cleanup
+
+    // accessToken field relies on PER_CLASS lifecycle and NO context reset between ordered tests
     private static String accessToken; // Store token between tests
 
     private String createURL(String uri) {
         return "http://localhost:" + port + uri;
+    }
+
+    // Clean up the specific test user after all test methods
+    // This preserves the user state between ordered tests
+    @AfterAll
+    void cleanupUserAfterAllTests() {
+        System.out.println("Running @AfterAll cleanup for integration_user...");
+        userRepository.findByUsername("integration_user").ifPresent(user -> {
+            userRepository.delete(user);
+            System.out.println("Deleted integration_user.");
+        });
+        accessToken = null; // Clear static token
     }
 
     @Test
@@ -81,7 +96,7 @@ class AuthIntegrationTest {
     @Test
     @Order(3) // Run secured endpoint access after signin
     void getMe_withValidToken_shouldReturnUserInfo() {
-        assertThat(accessToken).isNotNull(); // Ensure token was obtained
+        assertThat(accessToken).withFailMessage("Access token was null. Check if signin test ran successfully and set the token.").isNotNull();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken); // Set Authorization header
