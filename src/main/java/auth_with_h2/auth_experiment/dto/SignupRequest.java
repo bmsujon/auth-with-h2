@@ -1,4 +1,4 @@
-package auth_with_h2.auth_experiment.payload.request;
+package auth_with_h2.auth_experiment.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;

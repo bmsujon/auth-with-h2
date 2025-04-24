@@ -1,4 +1,4 @@
-package auth_with_h2.auth_experiment.payload.response;
+package auth_with_h2.auth_experiment.dto;
 
 import lombok.Data;
 

@@ -1,9 +1,12 @@
-package auth_with_h2.auth_experiment.payload.response;
+package auth_with_h2.auth_experiment.dto;
 
 import lombok.Data;
+import lombok.Getter;
+
 import java.util.List;
 
 @Data
+@Getter
 public class JwtResponse {
     private String token;
     private String type = "Bearer";

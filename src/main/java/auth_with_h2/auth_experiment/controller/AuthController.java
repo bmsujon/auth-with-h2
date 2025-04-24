@@ -5,12 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import auth_with_h2.auth_experiment.dto.LoginRequest;
-import auth_with_h2.auth_experiment.dto.MessageResponse;
-import auth_with_h2.auth_experiment.dto.UserInfoResponse;
-import auth_with_h2.auth_experiment.dto.ForgotPasswordRequest;
-import auth_with_h2.auth_experiment.dto.ResetPasswordRequest;
-import auth_with_h2.auth_experiment.dto.ChangePasswordRequest;
+import auth_with_h2.auth_experiment.dto.*;
 import auth_with_h2.auth_experiment.enums.ERole;
 import auth_with_h2.auth_experiment.exception.TokenRefreshException;
 import auth_with_h2.auth_experiment.exception.UserNotFoundException;
@@ -44,10 +39,6 @@ import org.springframework.web.bind.annotation.*;
 import auth_with_h2.auth_experiment.entity.Role;
 import auth_with_h2.auth_experiment.entity.User;
 import auth_with_h2.auth_experiment.entity.RefreshToken;
-import auth_with_h2.auth_experiment.payload.request.SignupRequest;
-import auth_with_h2.auth_experiment.payload.request.TokenRefreshRequest;
-import auth_with_h2.auth_experiment.payload.response.JwtResponse;
-import auth_with_h2.auth_experiment.payload.response.TokenRefreshResponse;
 import auth_with_h2.auth_experiment.repository.RoleRepository;
 import auth_with_h2.auth_experiment.repository.UserRepository;
 import auth_with_h2.auth_experiment.service.UserDetailsImpl; // Adjusted package
